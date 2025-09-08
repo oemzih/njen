@@ -1,4 +1,4 @@
---// Airflow Minimal Framework v3 (Proteksi GUI)
+--// Airflow Minimal Framework v4 (Force Show GUI)
 -- By ganteng
 
 local Airflow = {}
@@ -7,19 +7,27 @@ function Airflow:CreateWindow(config)
     local player = game:GetService("Players").LocalPlayer
     local playerGui = player:WaitForChild("PlayerGui")
 
-    -- Buat ScreenGui
+    -- Coba berbagai cara parent GUI
     local gui = Instance.new("ScreenGui")
     gui.Name = "AirflowUI"
-    gui.IgnoreGuiInset = true
+    gui.IgnoreGuiInset = false
     gui.ResetOnSpawn = false
 
-    -- Proteksi GUI agar tidak dihapus oleh game
-    if syn and syn.protect_gui then
-        syn.protect_gui(gui)
-        gui.Parent = gethui()
-    elseif gethui then
-        gui.Parent = gethui()
-    else
+    local ok = false
+    pcall(function()
+        if syn and syn.protect_gui then
+            syn.protect_gui(gui)
+            gui.Parent = gethui()
+            ok = true
+        end
+    end)
+    if not ok then
+        pcall(function()
+            gui.Parent = game:GetService("CoreGui")
+            ok = true
+        end)
+    end
+    if not ok then
         gui.Parent = playerGui
     end
 
@@ -27,7 +35,7 @@ function Airflow:CreateWindow(config)
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 400, 0, 250)
     mainFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     mainFrame.BorderSizePixel = 0
     mainFrame.Parent = gui
 
@@ -45,7 +53,7 @@ function Airflow:CreateWindow(config)
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(0, 200, 0, 40)
     button.Position = UDim2.new(0.5, -100, 0.5, -20)
-    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     button.Text = "Klik Aku"
     button.TextColor3 = Color3.fromRGB(255, 255, 255)
     button.Font = Enum.Font.SourceSansBold
@@ -53,10 +61,10 @@ function Airflow:CreateWindow(config)
     button.Parent = mainFrame
 
     button.MouseButton1Click:Connect(function()
-        print("Tombol Airflow diklik!")
+        print("[Airflow] Tombol diklik!")
     end)
 
-    print("[Airflow] GUI berhasil dimuat.")
+    warn("[Airflow] GUI berhasil dimuat & ditampilkan.")
     return mainFrame
 end
 
