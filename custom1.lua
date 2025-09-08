@@ -1,4 +1,4 @@
---// Airflow Minimal Framework v2
+--// Airflow Minimal Framework v3 (Proteksi GUI)
 -- By ganteng
 
 local Airflow = {}
@@ -12,7 +12,16 @@ function Airflow:CreateWindow(config)
     gui.Name = "AirflowUI"
     gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
-    gui.Parent = playerGui
+
+    -- Proteksi GUI agar tidak dihapus oleh game
+    if syn and syn.protect_gui then
+        syn.protect_gui(gui)
+        gui.Parent = gethui()
+    elseif gethui then
+        gui.Parent = gethui()
+    else
+        gui.Parent = playerGui
+    end
 
     -- Frame utama
     local mainFrame = Instance.new("Frame")
