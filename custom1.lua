@@ -1,22 +1,35 @@
---// Example AirflowUI
-local AirflowUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourrepo/AirflowUI.lua"))()
+--// Airflow Minimal Framework (custom1.lua)
+-- Dibuat oleh ganteng
 
-local Window = AirflowUI:CreateWindow({
-    Title = "Auto Summit GUI"
-})
+local Airflow = {}
 
-local MainTab = Window:CreateTab("Main")
-MainTab:CreateButton({
-    Name = "Teleport ke Basecamp",
-    Callback = function()
-        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-6.8, 13.1, -7.8)
-    end
-})
+-- Fungsi utama untuk bikin window
+function Airflow:CreateWindow(config)
+    local player = game.Players.LocalPlayer
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "AirflowUI"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
 
-local CreditsTab = Window:CreateTab("Credits")
-CreditsTab:CreateButton({
-    Name = "by ganteng",
-    Callback = function()
-        print("Mantap, dibuat oleh ganteng 😎")
-    end
-})
+    -- Frame utama
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 400, 0, 250)
+    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = gui
+
+    -- Judul
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundTransparency = 1
+    title.Text = config.Name or "Airflow Window"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 20
+    title.Font = Enum.Font.SourceSansBold
+    title.Parent = mainFrame
+
+    return mainFrame
+end
+
+return Airflow
