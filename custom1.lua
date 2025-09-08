@@ -1,15 +1,18 @@
---// Airflow Minimal Framework (custom1.lua)
--- Dibuat oleh ganteng
+--// Airflow Minimal Framework v2
+-- By ganteng
 
 local Airflow = {}
 
--- Fungsi utama untuk bikin window
 function Airflow:CreateWindow(config)
-    local player = game.Players.LocalPlayer
+    local player = game:GetService("Players").LocalPlayer
+    local playerGui = player:WaitForChild("PlayerGui")
+
+    -- Buat ScreenGui
     local gui = Instance.new("ScreenGui")
     gui.Name = "AirflowUI"
+    gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
-    gui.Parent = player:WaitForChild("PlayerGui")
+    gui.Parent = playerGui
 
     -- Frame utama
     local mainFrame = Instance.new("Frame")
@@ -29,6 +32,22 @@ function Airflow:CreateWindow(config)
     title.Font = Enum.Font.SourceSansBold
     title.Parent = mainFrame
 
+    -- Tombol dummy
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 200, 0, 40)
+    button.Position = UDim2.new(0.5, -100, 0.5, -20)
+    button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    button.Text = "Klik Aku"
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.SourceSansBold
+    button.TextSize = 18
+    button.Parent = mainFrame
+
+    button.MouseButton1Click:Connect(function()
+        print("Tombol Airflow diklik!")
+    end)
+
+    print("[Airflow] GUI berhasil dimuat.")
     return mainFrame
 end
 
