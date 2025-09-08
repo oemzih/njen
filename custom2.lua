@@ -1,65 +1,64 @@
---// siZhens Custom Framework
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "siZhensUI"
-ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+--// custom1.lua
+-- Pondasi sederhana Airflow GUI
+local Airflow = {}
 
--- Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 500, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.Visible = false
-MainFrame.Parent = ScreenGui
+-- Buat Window
+function Airflow:CreateWindow(settings)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "AirflowGUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = MainFrame
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.Size = UDim2.new(0, 400, 0, 250)
+    MainFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    MainFrame.BackgroundTransparency = 0.2
+    MainFrame.BorderSizePixel = 0
 
--- Title
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundTransparency = 1
-Title.Text = "siZhens Universal GUI"
-Title.TextColor3 = Color3.fromRGB(200, 100, 255)
-Title.TextScaled = true
-Title.Font = Enum.Font.GothamBold
-Title.Parent = MainFrame
+    local Title = Instance.new("TextLabel", MainFrame)
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.BackgroundTransparency = 1
+    Title.Text = settings.Name or "Airflow GUI"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 20
 
--- ContentFrame tempat menu nempel
-local Content = Instance.new("Frame")
-Content.Name = "MainContent"
-Content.Size = UDim2.new(1, 0, 1, -40)
-Content.Position = UDim2.new(0, 0, 0, 40)
-Content.BackgroundTransparency = 1
-Content.Parent = MainFrame
+    -- simpan untuk referensi
+    self.MainFrame = MainFrame
+    return self
+end
 
--- Loading Screen
-local LoadingFrame = Instance.new("Frame")
-LoadingFrame.Size = UDim2.new(1, 0, 1, 0)
-LoadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-LoadingFrame.BackgroundTransparency = 0.3
-LoadingFrame.Parent = ScreenGui
+-- Buat Tab
+function Airflow:CreateTab(name)
+    local Tab = Instance.new("TextLabel", self.MainFrame)
+    Tab.Size = UDim2.new(0, 100, 0, 30)
+    Tab.Position = UDim2.new(0, 10, 0, 50)
+    Tab.Text = name
+    Tab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Tab.BackgroundTransparency = 0.5
+    Tab.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    Tab.Font = Enum.Font.SourceSansBold
+    Tab.TextSize = 16
+    return Tab
+end
 
-local Logo = Instance.new("ImageLabel")
-Logo.Size = UDim2.new(0, 128, 0, 128)
-Logo.Position = UDim2.new(0.5, -64, 0.5, -64)
-Logo.BackgroundTransparency = 1
-Logo.Image = "rbxassetid://84576903354052"
-Logo.Parent = LoadingFrame
+-- Buat Button
+function Airflow:CreateButton(text, callback)
+    local Button = Instance.new("TextButton", self.MainFrame)
+    Button.Size = UDim2.new(0, 150, 0, 40)
+    Button.Position = UDim2.new(0, 10, 0, 90)
+    Button.Text = text
+    Button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.Font = Enum.Font.SourceSans
+    Button.TextSize = 18
+    Button.MouseButton1Click:Connect(function()
+        if callback then
+            callback()
+        end
+    end)
+    return Button
+end
 
--- Fade out setelah 3 detik
-task.delay(3, function()
-    for i = 0, 1, 0.05 do
-        LoadingFrame.BackgroundTransparency = i
-        Logo.ImageTransparency = i
-        task.wait(0.05)
-    end
-    LoadingFrame:Destroy()
-    MainFrame.Visible = true
-end)
-
--- Return API
-local Framework = {}
-Framework.ContentFrame = Content
-return Framework
+return Airflow
