@@ -1611,7 +1611,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 	LoadingFrame.Subtitle.TextTransparency = 1
 
 	if Settings.ShowText then
-		MPrompt.Title.Text = 'Show '..Settings.ShowText
+		MPrompt.Title.Text = 'Menu '..Settings.ShowText
 	end
 
 	LoadingFrame.Version.TextTransparency = 1
@@ -1619,7 +1619,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 	LoadingFrame.Subtitle.Text = Settings.LoadingSubtitle or "Interface Suite"
 
 	if Settings.LoadingTitle ~= "Njen Interface Suite" then
-		LoadingFrame.Version.Text = "Njen UI"
+		LoadingFrame.Version.Text = "Njen Version 1.0"
 	end
 
 	if Settings.Icon and Settings.Icon ~= 0 and Topbar:FindFirstChild('Icon') then
