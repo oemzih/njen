@@ -5,6 +5,7 @@ local Airflow = {}
 
 -- Dapatkan layanan TweenService
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 -- Buat Window
 function Airflow:CreateWindow(settings)
@@ -47,6 +48,36 @@ function Airflow:CreateWindow(settings)
     Title.TextColor3 = Color3.fromRGB(255, 255, 255)
     Title.Font = Enum.Font.SourceSansBold
     Title.TextSize = 20
+
+    -- Tombol Close (X)
+    local CloseButton = Instance.new("TextButton", MainFrame)
+    CloseButton.Size = UDim2.new(0, 25, 0, 25)
+    CloseButton.Position = UDim2.new(1, -25, 0, 0)
+    CloseButton.BackgroundTransparency = 1
+    CloseButton.Text = "X"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 50, 50)
+    CloseButton.Font = Enum.Font.SourceSansBold
+    CloseButton.TextSize = 20
+    CloseButton.ZIndex = 2 -- Pastikan tombol berada di atas
+    
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+    
+    -- Tombol Toggle (Minimize)
+    local ToggleButton = Instance.new("TextButton", MainFrame)
+    ToggleButton.Size = UDim2.new(0, 25, 0, 25)
+    ToggleButton.Position = UDim2.new(1, -55, 0, 0)
+    ToggleButton.BackgroundTransparency = 1
+    ToggleButton.Text = "-"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.Font = Enum.Font.SourceSansBold
+    ToggleButton.TextSize = 20
+    ToggleButton.ZIndex = 2 -- Pastikan tombol berada di atas
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        MainFrame.Visible = not MainFrame.Visible
+    end)
 
     -- Draggable support
     local dragging, dragInput, dragStart, startPos
