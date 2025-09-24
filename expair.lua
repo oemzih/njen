@@ -4,5 +4,5 @@
 -- Contoh: "2025-09-25" berarti kadaluarsa pada akhir 25 September 2025
 
 return {
-    ["qweasd"] = "2025-09-25",
+    ["sehari"] = "2025-09-23",
 }
