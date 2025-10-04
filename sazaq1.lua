@@ -2,7 +2,7 @@
 -- Loader: ambil key.lua (raw GitHub), cek/save key, lalu load Orion GUI
 -- EDIT: ganti GITHUB_RAW_KEY_URL ke raw URL key.lua di repo-mu
 
-local GITHUB_RAW_KEY_URL = "https://raw.githubusercontent.com/<username>/<repo>/main/key.lua"
+local GITHUB_RAW_KEY_URL = "https://raw.githubusercontent.com/oemzih/njen/refs/heads/main/zaq1.lua"
 local ORIONLIB_URL = "https://pastebin.com/raw/WRUyYTdY" -- ganti kalau perlu
 
 local Players = game:GetService("Players")
