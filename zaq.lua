@@ -3,7 +3,7 @@
 -- Ganti GITHUB_RAW_KEY_URL ke raw URL file key.lua di GitHub-mu.
 -- Ganti ORIONLIB_URL ke raw/pastebin URL OrionLib jika perlu.
 
-local GITHUB_RAW_KEY_URL = "https://raw.githubusercontent.com/<username>/<repo>/main/key.lua"
+local GITHUB_RAW_KEY_URL = "https://raw.githubusercontent.com/oemzih/njen/refs/heads/main/zaq%20lua"
 local ORIONLIB_URL = "https://pastebin.com/raw/WRUyYTdY" -- default, ganti kalau mau
 
 local Players = game:GetService("Players")
