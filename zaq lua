@@ -1,0 +1,400 @@
+-- source.lua
+-- Loader utama: ambil modul key dari GitHub raw, cek/save key, lalu load Orion GUI.
+-- Ganti GITHUB_RAW_KEY_URL ke raw URL file key.lua di GitHub-mu.
+-- Ganti ORIONLIB_URL ke raw/pastebin URL OrionLib jika perlu.
+
+local GITHUB_RAW_KEY_URL = "https://raw.githubusercontent.com/<username>/<repo>/main/key.lua"
+local ORIONLIB_URL = "https://pastebin.com/raw/WRUyYTdY" -- default, ganti kalau mau
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local CoreGUI = game:GetService("CoreGui")
+
+local HIDEUI = get_hidden_gui or gethui
+local SavedKeyPath = "ZaqueHub_key.txt" -- nama file untuk menyimpan key di executor
+
+-- util: hide gui ke parent executor-safe
+local function Hide_UI(gui)
+	if HIDEUI then
+		gui.Parent = HIDEUI()
+	elseif syn and syn.protect_gui then
+		pcall(function() syn.protect_gui(gui) end)
+		gui.Parent = CoreGUI
+	elseif CoreGUI:FindFirstChild("RobloxGui") then
+		gui.Parent = CoreGUI.RobloxGui
+	else
+		gui.Parent = CoreGUI
+	end
+end
+
+-- util: draggable kecil
+local function MakeDraggable(gui)
+	local dragging, dragInput, dragStart, startPos
+	local function update(input)
+		local delta = input.Position - dragStart
+		gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+	gui.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = gui.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
+			end)
+		end
+	end)
+	gui.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then update(input) end
+	end)
+end
+
+-- Notif sederhana (message)
+local function Notify(msg, dur)
+	dur = dur or 2
+	pcall(function()
+		local m = Instance.new("Message", workspace)
+		m.Text = tostring(msg)
+		delay(dur, function() if m and m.Parent then m:Destroy() end end)
+	end)
+end
+
+-- STEP 1: Ambil modul key dari GitHub (raw)
+local KeyGenerator = nil
+local ok, mod = pcall(function()
+	local code = game:HttpGet(GITHUB_RAW_KEY_URL, true)
+	return loadstring(code)()
+end)
+if ok and mod then
+	KeyGenerator = mod
+else
+	-- fallback (kalau fetch gagal) — gunakan generator sederhana internal
+	KeyGenerator = {
+		generate = function()
+			return "ZAQUE-" .. tostring(math.random(10000,99999)) .. "-" .. tostring(os.time())
+		end,
+		isValid = function(k)
+			if type(k) ~= "string" then return false end
+			local ts = string.match(k, "(%d+)$")
+			if not ts then return false end
+			local num = tonumber(ts)
+			if not num then return false end
+			if num + 24*3600 < os.time() then return false end
+			return true
+		end
+	}
+	Notify("Warning: Failed to load remote key module. Using local fallback.", 4)
+end
+
+-- util: simpan key ke file (jika executor support writefile)
+local function saveKeyToFile(key)
+	if writefile then
+		pcall(function() writefile(SavedKeyPath, tostring(key)) end)
+	end
+end
+
+-- util: load saved key jika ada (isfile/readfile)
+local function loadSavedKey()
+	if isfile and readfile and isfile(SavedKeyPath) then
+		local ok, c = pcall(function() return readfile(SavedKeyPath) end)
+		if ok and c then return tostring(c) end
+	end
+	return nil
+end
+
+-- util: simple time-check (ambil angka terakhir sebagai timestamp)
+local function parseTimestampFromKey(k)
+	if not k then return nil end
+	local ts = string.match(k, "(%d+)$")
+	if ts then return tonumber(ts) end
+	return nil
+end
+
+local function isKeyTimeValid(k)
+	local ts = parseTimestampFromKey(k)
+	if not ts then return false end
+	return (ts + 24*3600) >= os.time()
+end
+
+local function isKeyValidOverall(k)
+	if not k then return false end
+	-- jika modul punya isValid gunakan itu (lindungi pcall)
+	local ok, ret = pcall(function()
+		if KeyGenerator and type(KeyGenerator.isValid) == "function" then
+			return KeyGenerator:isValid(k)
+		end
+		return true
+	end)
+	if not ok or ret ~= true then return false end
+	-- cek time
+	return isKeyTimeValid(k)
+end
+
+-- UI untuk input / generate key
+local function CreateKeyUI(onSuccess)
+	if CoreGUI:FindFirstChild("ZaqueKeyUI") then return end
+	local screen = Instance.new("ScreenGui")
+	screen.Name = "ZaqueKeyUI"
+	Hide_UI(screen)
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 380, 0, 220)
+	frame.Position = UDim2.new(0.5, -190, 0.5, -110)
+	frame.BackgroundColor3 = Color3.fromRGB(28,28,28)
+	frame.Parent = screen
+	MakeDraggable(frame)
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1,0,0,40)
+	title.BackgroundTransparency = 1
+	title.TextColor3 = Color3.fromRGB(230,230,230)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 18
+	title.Text = "Zaque Hub - Key System"
+	title.Parent = frame
+
+	local info = Instance.new("TextLabel")
+	info.Size = UDim2.new(1,-20,0,30)
+	info.Position = UDim2.new(0,10,0,40)
+	info.BackgroundTransparency = 1
+	info.TextColor3 = Color3.fromRGB(190,190,190)
+	info.Font = Enum.Font.Gotham
+	info.TextSize = 14
+	info.Text = "Masukkan key (valid 24 jam) atau tekan Generate untuk menyalin key ke clipboard."
+	info.TextWrapped = true
+	info.Parent = frame
+
+	local input = Instance.new("TextBox")
+	input.Size = UDim2.new(0, 340, 0, 40)
+	input.Position = UDim2.new(0, 20, 0, 80)
+	input.BackgroundColor3 = Color3.fromRGB(40,40,40)
+	input.TextColor3 = Color3.fromRGB(230,230,230)
+	input.PlaceholderText = "Enter key..."
+	input.ClearTextOnFocus = false
+	input.Font = Enum.Font.Gotham
+	input.TextSize = 16
+	input.Parent = frame
+
+	local checkBtn = Instance.new("TextButton")
+	checkBtn.Size = UDim2.new(0, 160, 0, 40)
+	checkBtn.Position = UDim2.new(0, 20, 0, 140)
+	checkBtn.Text = "Check Key"
+	checkBtn.Font = Enum.Font.Gotham
+	checkBtn.TextSize = 16
+	checkBtn.Parent = frame
+
+	local genBtn = Instance.new("TextButton")
+	genBtn.Size = UDim2.new(0, 160, 0, 40)
+	genBtn.Position = UDim2.new(0, 200, 0, 140)
+	genBtn.Text = "Generate (Copy)"
+	genBtn.Font = Enum.Font.Gotham
+	genBtn.TextSize = 16
+	genBtn.Parent = frame
+
+	checkBtn.MouseButton1Click:Connect(function()
+		local val = tostring(input.Text or ""):gsub("%s+", "")
+		if val == "" then Notify("Masukkan key dulu!",2); return end
+		if isKeyValidOverall(val) then
+			saveKeyToFile(val)
+			Notify("Key valid. Menyimpan dan memuat GUI...",2)
+			pcall(function() screen:Destroy() end)
+			if type(onSuccess) == "function" then onSuccess(val) end
+		else
+			Notify("Key invalid atau expired!", 2)
+		end
+	end)
+
+	genBtn.MouseButton1Click:Connect(function()
+		local ok2, newKey = pcall(function()
+			if KeyGenerator and type(KeyGenerator.generate) == "function" then
+				return KeyGenerator:generate()
+			end
+			return "ZAQUE-" .. tostring(math.random(10000,99999)) .. "-" .. tostring(os.time())
+		end)
+		if ok2 and newKey then
+			if setclipboard then
+				pcall(setclipboard, tostring(newKey))
+				Notify("Key disalin ke clipboard.",2)
+			else
+				input.Text = tostring(newKey)
+				Notify("Key dihasilkan. Salin secara manual dari kotak input.",2)
+			end
+		else
+			Notify("Gagal membuat key.",2)
+		end
+	end)
+end
+
+-- fungsi untuk memuat Orion GUI (script ke-2)
+local function loadOrionGUI()
+	local ok, Orion = pcall(function()
+		return loadstring(game:HttpGet(ORIONLIB_URL, true))()
+	end)
+	if not ok or not Orion then
+		Notify("Gagal memuat OrionLib. Periksa koneksi/URL.", 3)
+		return
+	end
+
+	-- === Tempel script ke-2 di sini (atau panggil module/URL lain) ===
+	-- Saya asumsikan script ke-2 bergantung pada Orion lib saja; masukkan body script ke-2 di bawah ini.
+	-- (untuk ringkasan, saya memanggil fungsi yang sama seperti versi sebelumnya)
+	local Window = Orion:MakeWindow({
+		Name = "zaque hub",
+		HidePremium = false,
+		SaveConfig = true,
+		ConfigFolder = "zaque hub | 💪 muscle legends"
+	})
+
+	local Tab = Window:MakeTab({ Name = "Info", Icon = "rbxassetid://4483345998", PremiumOnly = false })
+	local Section = Tab:AddSection({ Name = "Info" })
+	local playerName = Players.LocalPlayer.Name
+	Tab:AddLabel("Ola " .. playerName .. "! obrigado por usar o zaque hub")
+	Tab:AddLabel("Bem aqui estão as informações")
+
+	local Section2 = Tab:AddSection({ Name = "Sobre o Criador" })
+	Tab:AddLabel("Feito por { zaque_blox } ou { zaquel }")
+	Tab:AddLabel("Eu tenho 11 anos")
+
+	local Section3 = Tab:AddSection({ Name = "Game" })
+	Tab:AddLabel("💪 Muscle Legends")
+
+	local Section4 = Tab:AddSection({ Name = "Sociais" })
+	Tab:AddButton({ Name = "Discord oficial", Callback = function() pcall(setclipboard, "https://discord.gg/") end })
+	Tab:AddButton({ Name = "Grupo do Zap Oficial", Callback = function() pcall(setclipboard, "https://chat.whatsapp.com/CpJRk0pToQsKx94iKIm2a7") end })
+	Tab:AddButton({ Name = "Tiktok Oficial", Callback = function() pcall(setclipboard, "https://") end })
+
+	local TabMain = Window:MakeTab({ Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false })
+	local SectionFarm = TabMain:AddSection({ Name = "Farm" })
+	local autoPunch, autoTrain, speedEnabled, jumpEnabled = false, false, false, false
+	local walkSpeed, jumpPower = 16, 50
+
+	TabMain:AddToggle({
+		Name = "Auto Punch",
+		Default = false,
+		Callback = function(Value)
+			autoPunch = Value
+			spawn(function()
+				while autoPunch do
+					local character = Players.LocalPlayer.Character
+					if character and character:FindFirstChildOfClass("Tool") then
+						pcall(function() character:FindFirstChildOfClass("Tool"):Activate() end)
+					end
+					wait(0.3)
+				end
+			end)
+		end
+	})
+
+	local function equipHalter()
+		local character = Players.LocalPlayer.Character
+		local backpack = Players.LocalPlayer.Backpack
+		for _, tool in pairs(character:GetChildren()) do if tool:IsA("Tool") then return tool end end
+		for _, tool in pairs(backpack:GetChildren()) do if tool:IsA("Tool") then tool.Parent = character; return tool end end
+		return nil
+	end
+	TabMain:AddToggle({
+		Name = "Auto Train",
+		Default = false,
+		Callback = function(Value)
+			autoTrain = Value
+			spawn(function()
+				while autoTrain do
+					local character = Players.LocalPlayer.Character
+					if character then
+						local tool = equipHalter()
+						if tool then pcall(function() tool:Activate() end) end
+					end
+					wait(0.5)
+				end
+			end)
+		end
+	})
+
+	TabMain:AddToggle({
+		Name = "Speed",
+		Default = false,
+		Callback = function(Value)
+			speedEnabled = Value
+			pcall(function()
+				if speedEnabled then
+					Players.LocalPlayer.Character.Humanoid.WalkSpeed = walkSpeed
+				else
+					Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16
+				end
+			end)
+		end
+	})
+
+	local speedOptions = {}
+	for i = 1, 500 do table.insert(speedOptions, tostring(i)) end
+	TabMain:AddDropdown({
+		Name = "Set Speed",
+		Default = "16",
+		Options = speedOptions,
+		Callback = function(Value)
+			if speedEnabled then
+				walkSpeed = tonumber(Value)
+				pcall(function() Players.LocalPlayer.Character.Humanoid.WalkSpeed = walkSpeed end)
+			end
+		end
+	})
+
+	TabMain:AddToggle({
+		Name = "Jump Power",
+		Default = false,
+		Callback = function(Value)
+			jumpEnabled = Value
+			pcall(function()
+				if jumpEnabled then
+					Players.LocalPlayer.Character.Humanoid.UseJumpPower = true
+					Players.LocalPlayer.Character.Humanoid.JumpPower = jumpPower
+				else
+					Players.LocalPlayer.Character.Humanoid.JumpPower = 50
+				end
+			end)
+		end
+	})
+
+	local jumpOptions = {}
+	for i = 50, 500, 10 do table.insert(jumpOptions, tostring(i)) end
+	TabMain:AddDropdown({
+		Name = "Set Jump Power",
+		Default = "50",
+		Options = jumpOptions,
+		Callback = function(Value)
+			if jumpEnabled then
+				jumpPower = tonumber(Value)
+				pcall(function() Players.LocalPlayer.Character.Humanoid.JumpPower = jumpPower end)
+			end
+		end
+	})
+
+	local TabScript = Window:MakeTab({ Name = "script", Icon = "rbxassetid://4483345998", PremiumOnly = false })
+	local SectionScript = TabScript:AddSection({ Name = "universal" })
+	TabScript:AddButton({
+		Name = "Infinite Yield",
+		Callback = function()
+			pcall(function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source', true))() end)
+		end
+	})
+end
+
+-- MAIN FLOW:
+local saved = loadSavedKey()
+if saved and isKeyValidOverall(saved) then
+	Notify("Saved key valid. Loading GUI...",2)
+	-- ensure saved (rewrite safe)
+	saveKeyToFile(saved)
+	loadOrionGUI()
+else
+	-- tampilkan UI input/generate, lalu load GUI ketika sukses
+	CreateKeyUI(function(entered)
+		-- entered sudah disimpan sesuai CreateKeyUI
+		loadOrionGUI()
+	end)
+end
