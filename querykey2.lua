@@ -1,5 +1,4 @@
--- Key System Framework: menampilkan Standalone GUI dengan Gaya Mirip Gambar (ANIMASI & UI MODERN)
--- Diperbaiki: Menambahkan UICorner dan penyesuaian layout untuk meniru gaya visual.
+-- Key System Framework: Stabil, Tampilan Rapi, Tengah, Animasi Slide/Fade
 
 local Framework = {}
 Framework.__index = Framework
@@ -11,6 +10,8 @@ local DEFAULT_EVKEY_URL = "https://raw.githubusercontent.com/oemzih/njen/refs/he
 local TweenService = game:GetService("TweenService")
 local EasingStyle = Enum.EasingStyle
 local EasingDirection = Enum.EasingDirection
+local GuiService = game:GetService("GuiService")
+local StarterGui = game:GetService("StarterGui")
 
 -- util: safe parent ScreenGui
 local function safeParent(screenGui)
@@ -27,7 +28,7 @@ local function safeParent(screenGui)
     end
 end
 
--- Fallback GUI Implementation (SEKARANG UI UTAMA DENGAN ANIMASI DAN STYLE BARU)
+-- Fallback GUI Implementation (SEKARANG UI UTAMA DENGAN LAYOUT YANG DIRAPIKAN)
 local function createStandaloneUI(cfg, onKeySubmit)
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "StandaloneKeyUI"
@@ -44,13 +45,12 @@ local function createStandaloneUI(cfg, onKeySubmit)
         if cfg.Theme and cfg.Theme.Background then bgColor = Color3.fromHex("#" .. cfg.Theme.Background) end
     end)
 
-    -- TENTUKAN POSISI AWAL DAN AKHIR
+    -- TENTUKAN DIMENSI DAN POSISI
     local GUI_WIDTH = 350
-    local GUI_HEIGHT = 220 -- Ukuran lebih besar untuk menampung elemen
-    local FINAL_POS = UDim2.new(0.5, -GUI_WIDTH/2, 0.5, -GUI_HEIGHT/2)
-    local START_POS = UDim2.new(0.5, -GUI_WIDTH/2, -0.5, -GUI_HEIGHT/2) 
-    local HIDE_POS = UDim2.new(0.5, -GUI_WIDTH/2, 1.5, -GUI_HEIGHT/2) 
-
+    local GUI_HEIGHT = 220 
+    local FINAL_POS = UDim2.new(0.5, -GUI_WIDTH/2, 0.5, -GUI_HEIGHT/2) -- Tepat di tengah
+    local START_POS = UDim2.new(0.5, -GUI_WIDTH/2, -0.5, -GUI_HEIGHT/2) -- Awal dari atas
+    
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, GUI_WIDTH, 0, GUI_HEIGHT)
     frame.Position = START_POS 
@@ -58,7 +58,7 @@ local function createStandaloneUI(cfg, onKeySubmit)
     frame.BorderSizePixel = 2
     frame.BorderColor3 = borderColor
     frame.Parent = screenGui
-    frame.BackgroundTransparency = 1 
+    frame.BackgroundTransparency = 1
     
     -- UI Corner Frame
     local corner = Instance.new("UICorner")
@@ -78,8 +78,8 @@ local function createStandaloneUI(cfg, onKeySubmit)
     header.Position = UDim2.new(0, 0, 0, 0)
     header.Font = Enum.Font.SourceSansBold
     header.TextSize = 24
-    header.TextColor3 = textColor
-    header.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1) -- Sedikit lebih gelap dari background frame
+    header.TextColor3 = borderColor -- Gunakan warna border untuk Title
+    header.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1) 
     header.BackgroundTransparency = 0.5
     header.Parent = frame
     
@@ -95,10 +95,11 @@ local function createStandaloneUI(cfg, onKeySubmit)
     closeButton.ZIndex = 2
     closeButton.Parent = header
 
+    -- Body Text
     local body = Instance.new("TextLabel")
     body.Text = cfg.Text.Body or "Enter the key to access the contents of the script."
     body.Size = UDim2.new(0.9, 0, 0, 30)
-    body.Position = UDim2.new(0.5, -body.Size.X.Offset/2, 0, 45)
+    body.Position = UDim2.new(0.5, 0, 0, 45) -- PUSATKAN TEKS
     body.Font = Enum.Font.SourceSans
     body.TextSize = 15
     body.TextColor3 = Color3.new(0.8, 0.8, 0.8)
@@ -111,7 +112,8 @@ local function createStandaloneUI(cfg, onKeySubmit)
     keyInput.Text = ""
     keyInput.Name = "KeyInput"
     keyInput.Size = UDim2.new(0.85, 0, 0, 40)
-    keyInput.Position = UDim2.new(0.5, -keyInput.Size.X.Offset/2, 0, 80)
+    keyInput.Position = UDim2.new(0.5, 0, 0, 80) -- Tepat dibawah body text
+    keyInput.TextXAlignment = Enum.TextXAlignment.Center -- Teks Input di tengah
     keyInput.Font = Enum.Font.SourceSans
     keyInput.TextSize = 18
     keyInput.TextColor3 = Color3.new(1, 1, 1)
@@ -122,18 +124,32 @@ local function createStandaloneUI(cfg, onKeySubmit)
     keyInputCorner.CornerRadius = UDim.new(0, 6)
     keyInputCorner.Parent = keyInput
 
+    -- Container untuk tombol agar sejajar
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Size = UDim2.new(0.85, 0, 0, 40)
+    buttonContainer.Position = UDim2.new(0.5, 0, 0, 145) -- Posisi lebih ke bawah dari input
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Parent = frame
+    
+    local buttonLayout = Instance.new("UIListLayout")
+    buttonLayout.FillDirection = Enum.FillDirection.Horizontal
+    buttonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    buttonLayout.Padding = UDim.new(0, 20) -- Jarak antara tombol
+    buttonLayout.Parent = buttonContainer
+
     -- Tombol Get Key (sesuai gambar)
     local getButton = Instance.new("TextButton")
     getButton.Text = "Get key"
-    getButton.Size = UDim2.new(0.4, 0, 0, 35)
-    getButton.Position = UDim2.new(0.5 - getButton.Size.X.Scale/2, -10, 0, 140) -- Kiri bawah
+    getButton.Size = UDim2.new(0.5, -10, 1, 0) 
+    getButton.LayoutOrder = 1
     getButton.Font = Enum.Font.SourceSansBold
     getButton.TextSize = 18
     getButton.TextColor3 = textColor
     getButton.BackgroundColor3 = Color3.new(0.05, 0.1, 0.05)
     getButton.BorderColor3 = borderColor
     getButton.BorderSizePixel = 1
-    getButton.Parent = frame
+    getButton.Parent = buttonContainer
     
     local getButtonCorner = Instance.new("UICorner")
     getButtonCorner.CornerRadius = UDim.new(0, 6)
@@ -142,15 +158,15 @@ local function createStandaloneUI(cfg, onKeySubmit)
     -- Tombol Confirm (sesuai gambar)
     local confirmButton = Instance.new("TextButton")
     confirmButton.Text = "Confirm"
-    confirmButton.Size = UDim2.new(0.4, 0, 0, 35)
-    confirmButton.Position = UDim2.new(0.5, 10, 0, 140) -- Kanan bawah
+    confirmButton.Size = UDim2.new(0.5, -10, 1, 0)
+    confirmButton.LayoutOrder = 2
     confirmButton.Font = Enum.Font.SourceSansBold
     confirmButton.TextSize = 18
     confirmButton.TextColor3 = textColor
     confirmButton.BackgroundColor3 = Color3.new(0.05, 0.1, 0.05)
     confirmButton.BorderColor3 = borderColor
     confirmButton.BorderSizePixel = 1
-    confirmButton.Parent = frame
+    confirmButton.Parent = buttonContainer
     
     local confirmButtonCorner = Instance.new("UICorner")
     confirmButtonCorner.CornerRadius = UDim.new(0, 6)
@@ -158,13 +174,12 @@ local function createStandaloneUI(cfg, onKeySubmit)
     
     -- Fungsi Animasi
     local function animateShow()
-        -- Animasi muncul: Fade in dan Slide Down
         local info = TweenInfo.new(0.4, EasingStyle.Quart, EasingDirection.Out)
         TweenService:Create(frame, info, {Position = FINAL_POS, BackgroundTransparency = 0}):Play()
     end
     
     local function animateHide(slideUp)
-        local targetPos = slideUp and START_POS or HIDE_POS -- Slide Up saat Success, Slide Down saat Cancel
+        local targetPos = slideUp and START_POS or UDim2.new(0.5, -GUI_WIDTH/2, 1.5, -GUI_HEIGHT/2)
         local info = TweenInfo.new(0.4, EasingStyle.Quart, EasingDirection.In)
         
         local tween = TweenService:Create(frame, info, {Position = targetPos, BackgroundTransparency = 1})
@@ -207,8 +222,9 @@ local function createStandaloneUI(cfg, onKeySubmit)
     
     getButton.MouseButton1Click:Connect(function()
         local getLink = cfg.GetKeyLink or "https://example.com/getkey"
-        game:GetService("GuiService"):SetBubblesVisible(false) -- Optional: Try to prevent chat bubbles
-        game:GetService("StarterGui"):SetCore("OpenURL", getLink)
+        -- Fungsi untuk membuka URL di executor:
+        pcall(function() GuiService:SetBubblesVisible(false) end)
+        pcall(function() StarterGui:SetCore("OpenURL", getLink) end)
     end)
 
     closeButton.MouseButton1Click:Connect(function()
@@ -284,7 +300,7 @@ function Framework.CreateWindow(cfg)
             -- Feedback visual
             local keyInput = uiApi._RawGui:FindFirstChild("KeyInput")
             if keyInput then
-                local originalPlaceholder = "Enter key" -- Karena kita set di atas
+                local originalPlaceholder = "Enter key"
                 keyInput.PlaceholderText = cfg.Text.Fail or "Access denied"
                 keyInput.Text = ""
                 wait(2)
