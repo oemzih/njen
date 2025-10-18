@@ -2,7 +2,7 @@
 -- Contoh file yang memuat framework dari raw GitHub via loadstring
 -- Ganti RAW_FRAMEWORK_URL dengan link raw GitHub Anda (contoh: https://raw.githubusercontent.com/username/repo/branch/framework.lua)
 
-local RAW_FRAMEWORK_URL = "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/framework.lua" -- <- ganti
+local RAW_FRAMEWORK_URL = "https://raw.githubusercontent.com/oemzih/njen/refs/heads/main/querykey.lua" -- <- ganti
 
 local ok, framework = pcall(function()
     return loadstring(game:HttpGet(RAW_FRAMEWORK_URL))()
@@ -20,7 +20,7 @@ end
 -- end
 
 local KeySettings = {
-    Key = "myPlainKey123", -- jika ingin plain
+    Key = "test", -- jika ingin plain
     Type = "plain",
     Encryption = "" -- jika pakai bcrypt, isi 'bcrypt' dan override BcryptCheck
 }
