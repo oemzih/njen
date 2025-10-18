@@ -1,100 +1,97 @@
--- Key System Framework: Standalone GUI + evkey.lua
+-- QueryKey Framework (loadstring-only, standalone GUI)
 local Framework = {}
 Framework.__index = Framework
 
 local DEFAULT_EVKEY_URL = "https://raw.githubusercontent.com/oemzih/njen/refs/heads/main/evkey.lua"
 
-local function safeParent(screenGui)
+-- Safe parent function
+local function safeParent(gui)
     local plr = game:GetService("Players").LocalPlayer
-    local success = pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
-    if success then return end
-    if plr then pcall(function() screenGui.Parent = plr:WaitForChild("PlayerGui") end) else pcall(function() screenGui.Parent = workspace end)
+    local ok = pcall(function() gui.Parent = game:GetService("CoreGui") end)
+    if ok then return end
+    if plr then pcall(function() gui.Parent = plr:WaitForChild("PlayerGui") end) else pcall(function() gui.Parent = workspace end)
 end
 
+-- Create standalone key GUI
 local function createStandaloneUI(cfg, onKeySubmit)
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "StandaloneKeyUI"
     screenGui.DisplayOrder = 999
     safeParent(screenGui)
 
-    local borderColor = Color3.new(0, 1, 0)
-    local textColor = Color3.new(1, 1, 1)
-    pcall(function() 
-        if cfg.Theme and cfg.Theme.Border then borderColor = Color3.fromHex("#" .. cfg.Theme.Border) end
-        if cfg.Theme and cfg.Theme.Text then textColor = Color3.fromHex("#" .. cfg.Theme.Text) end
-    end)
-
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 300, 0, 150)
-    frame.Position = UDim2.new(0.5, -150, 0.5, -75)
-    frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    frame.Size = UDim2.new(0, 320, 0, 160)
+    frame.Position = UDim2.new(0.5, -160, 0.5, -80)
+    frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
     frame.BorderSizePixel = 2
-    frame.BorderColor3 = borderColor
+    frame.BorderColor3 = Color3.new(0,1,0)
     frame.Parent = screenGui
 
     -- Tombol X pojok atas
     local closeButton = Instance.new("TextButton")
     closeButton.Text = "X"
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -35, 0, 5)
+    closeButton.Size = UDim2.new(0, 28, 0, 28)
+    closeButton.Position = UDim2.new(1, -32, 0, 4)
+    closeButton.BackgroundColor3 = Color3.fromRGB(200,0,0)
+    closeButton.TextColor3 = Color3.new(1,1,1)
     closeButton.Font = Enum.Font.SourceSansBold
     closeButton.TextSize = 18
-    closeButton.TextColor3 = Color3.new(1, 1, 1)
-    closeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
     closeButton.Parent = frame
-    closeButton.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-    end)
+    closeButton.MouseButton1Click:Connect(function() screenGui:Destroy() end)
 
+    -- Title
     local title = Instance.new("TextLabel")
     title.Text = cfg.Text.Title or "Key System"
     title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0,0,0,0)
     title.Font = Enum.Font.SourceSansBold
     title.TextSize = 20
-    title.TextColor3 = textColor
-    title.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    title.TextColor3 = Color3.new(1,1,1)
+    title.BackgroundColor3 = Color3.fromRGB(50,50,50)
     title.Parent = frame
 
+    -- Body
     local body = Instance.new("TextLabel")
     body.Text = cfg.Text.Body or "Enter the key:"
     body.Size = UDim2.new(1, 0, 0, 20)
-    body.Position = UDim2.new(0, 0, 0, 35)
+    body.Position = UDim2.new(0,0,0,35)
     body.Font = Enum.Font.SourceSans
     body.TextSize = 14
-    body.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-    body.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    body.TextColor3 = Color3.new(0.8,0.8,0.8)
+    body.BackgroundColor3 = Color3.fromRGB(30,30,30)
     body.Parent = frame
 
+    -- Key input
     local keyInput = Instance.new("TextBox")
     keyInput.PlaceholderText = "KEY"
-    keyInput.Name = "KeyInput"
-    keyInput.Size = UDim2.new(0.9, 0, 0, 30)
-    keyInput.Position = UDim2.new(0.05, 0, 0, 60)
+    keyInput.Size = UDim2.new(0.9,0,0,30)
+    keyInput.Position = UDim2.new(0.05,0,0,60)
     keyInput.Font = Enum.Font.SourceSans
     keyInput.TextSize = 16
-    keyInput.TextColor3 = Color3.new(1, 1, 1)
-    keyInput.BackgroundColor3 = Color3.new(0.05, 0.05, 0.05)
+    keyInput.TextColor3 = Color3.new(1,1,1)
+    keyInput.BackgroundColor3 = Color3.fromRGB(15,15,15)
     keyInput.Parent = frame
 
+    -- Submit button
     local submitButton = Instance.new("TextButton")
     submitButton.Text = "Submit"
-    submitButton.Size = UDim2.new(0.4, 0, 0, 30)
-    submitButton.Position = UDim2.new(0.05, 0, 0, 100)
+    submitButton.Size = UDim2.new(0.45,0,0,30)
+    submitButton.Position = UDim2.new(0.05,0,0,110)
+    submitButton.BackgroundColor3 = Color3.fromRGB(0,150,0)
+    submitButton.TextColor3 = Color3.new(1,1,1)
     submitButton.Font = Enum.Font.SourceSansBold
     submitButton.TextSize = 18
-    submitButton.TextColor3 = Color3.new(1, 1, 1)
-    submitButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
     submitButton.Parent = frame
 
-    -- Tombol GET KEYS (mengganti Cancel)
+    -- Get Keys button (replace Cancel)
     local getKeysButton = Instance.new("TextButton")
     getKeysButton.Text = "Get Keys"
-    getKeysButton.Size = UDim2.new(0.4, 0, 0, 30)
-    getKeysButton.Position = UDim2.new(0.55, 0, 0, 100)
+    getKeysButton.Size = UDim2.new(0.45,0,0,30)
+    getKeysButton.Position = UDim2.new(0.5,0,0,110)
+    getKeysButton.BackgroundColor3 = Color3.fromRGB(0,0,200)
+    getKeysButton.TextColor3 = Color3.new(1,1,1)
     getKeysButton.Font = Enum.Font.SourceSansBold
     getKeysButton.TextSize = 18
-    getKeysButton.TextColor3 = Color3.new(1, 1, 1)
-    getKeysButton.BackgroundColor3 = Color3.fromRGB(0, 0, 150)
     getKeysButton.Parent = frame
 
     local userFailed, userPassed, userWhitelisted, userCancelled
@@ -118,14 +115,14 @@ local function createStandaloneUI(cfg, onKeySubmit)
 
     getKeysButton.MouseButton1Click:Connect(function()
         api._CallCancelled()
-        print("[QueryKey] GET KEYS clicked")
     end)
 
     return api
 end
 
+-- Simple key validation
 Framework.BcryptCheck = function(input, hash)
-    warn("[QueryKey] BcryptCheck tidak di-override. Bcrypt tidak akan berfungsi.")
+    warn("[QueryKey] BcryptCheck tidak di-override")
     return false
 end
 
@@ -133,13 +130,10 @@ local function runEvkey(evurl)
     evurl = evurl or DEFAULT_EVKEY_URL
     spawn(function()
         wait(0.2)
-        local ok2, err = pcall(function()
-            print("[QueryKey] Mencoba memuat dan menjalankan EVKEY dari:", evurl)
+        local ok, err = pcall(function()
             loadstring(game:HttpGet(evurl))()
         end)
-        if not ok2 then
-            warn("[QueryKey] Gagal load evkey.lua dari:", evurl, "error:", err)
-        end
+        if not ok then warn("Gagal load evkey:", err) end
     end)
 end
 
@@ -149,64 +143,30 @@ function Framework.CreateWindow(cfg)
     cfg.Whitelisted = cfg.Whitelisted or {}
 
     local function validateKey(inputKey)
-        local targetKey = cfg.KeySettings.Key or ""
-        local keyType = cfg.KeySettings.Type or "plain"
-        local keyEnc = cfg.KeySettings.Encryption or ""
-        
-        if keyType == "plain" then
-            return inputKey == targetKey
-        elseif keyEnc == "bcrypt" then
-            if Framework.BcryptCheck then
-                return Framework.BcryptCheck(inputKey, targetKey)
-            else
-                return false
-            end
+        local key = cfg.KeySettings.Key or ""
+        if (cfg.KeySettings.Type or "plain") == "plain" then
+            return inputKey == key
         end
         return false
     end
 
-    local function handleStandaloneSubmit(inputKey, uiApi)
-        local localPlayer = game:GetService("Players").LocalPlayer
-        local isWhitelisted = table.find(cfg.Whitelisted, localPlayer.UserId)
-
-        if isWhitelisted then
-            uiApi.Destroy()
-            pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
-            uiApi._CallWhitelisted()
+    local function handleSubmit(inputKey, ui)
+        local plr = game:GetService("Players").LocalPlayer
+        if table.find(cfg.Whitelisted, plr.UserId) then
+            ui.Destroy()
+            pcall(runEvkey, cfg.ExecuteOnPass)
+            ui._CallWhitelisted()
         elseif validateKey(inputKey) then
-            uiApi.Destroy()
-            pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
-            uiApi._CallPassed()
+            ui.Destroy()
+            pcall(runEvkey, cfg.ExecuteOnPass)
+            ui._CallPassed()
         else
-            print("[QueryKey] Key validation failed.")
-            local keyInput = uiApi._RawGui:FindFirstChild("KeyInput")
-            if keyInput then
-                local originalPlaceholder = cfg.Text.Body or "Enter the key:"
-                keyInput.PlaceholderText = cfg.Text.Fail or "Access denied"
-                keyInput.Text = ""
-                wait(2)
-                keyInput.PlaceholderText = originalPlaceholder
-            end
-            uiApi._CallFailed()
+            ui._CallFailed()
         end
     end
 
-    local uiWindow = nil
-    local okCreate, err = pcall(function()
-        uiWindow = createStandaloneUI(cfg, handleStandaloneSubmit)
-    end)
-    
-    if not okCreate or not uiWindow then
-         error(string.format("[QueryKey] GAGAL TOTAL membuat GUI internal. Error: %s", tostring(err)))
-    end
-
-    if table.find(cfg.Whitelisted, game:GetService("Players").LocalPlayer.UserId) then
-        pcall(function() uiWindow.Destroy() end)
-        pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
-        return
-    end
-
-    return uiWindow
+    local ui = createStandaloneUI(cfg, handleSubmit)
+    return ui
 end
 
 return Framework
