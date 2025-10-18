@@ -1,5 +1,5 @@
--- Key System Framework: menampilkan Fallback GUI (GUI internal yang stabil) dan menjalankan evkey.lua saat valid
--- Diperbaiki: KeyUI v2 dihapus total. Hanya menggunakan GUI internal yang mandiri (standalone).
+-- Key System Framework: menampilkan Standalone GUI (stabil) dan menjalankan evkey.lua saat valid
+-- Catatan: Ketergantungan pada KeyUI v2 telah dihapus sepenuhnya untuk stabilitas.
 
 local Framework = {}
 Framework.__index = Framework
@@ -9,28 +9,22 @@ local DEFAULT_EVKEY_URL = "https://raw.githubusercontent.com/oemzih/njen/refs/he
 
 -- util: safe parent ScreenGui
 local function safeParent(screenGui)
-    local RunService = game:GetService("RunService")
-    local success = false
+    local plr = game:GetService("Players").LocalPlayer
     
-    -- Coba CoreGui dulu (banyak executor mendukungnya)
-    success = pcall(function() 
-        game:GetService("CoreGui") 
-        screenGui.Parent = game:GetService("CoreGui")
-    end)
+    -- Coba CoreGui (sering didukung oleh executor)
+    local success = pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
     
     if success then return end
 
     -- Fallback: PlayerGui
-    local plr = game:GetService("Players").LocalPlayer
     if plr then
         pcall(function() screenGui.Parent = plr:WaitForChild("PlayerGui") end)
     else
-        -- Last resort (biasanya tidak terjadi)
         pcall(function() screenGui.Parent = workspace end)
     end
 end
 
--- Fallback GUI Implementation (KeyUI Sederhana - Sekarang menjadi UI UTAMA)
+-- Fallback GUI Implementation (KeyUI Sederhana - SEKARANG UI UTAMA)
 local function createStandaloneUI(cfg, onKeySubmit)
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "StandaloneKeyUI"
@@ -38,14 +32,12 @@ local function createStandaloneUI(cfg, onKeySubmit)
     safeParent(screenGui)
 
     -- Ambil warna tema
-    local borderColor = Color3.fromRGB(0, 255, 0)
-    local textColor = Color3.fromRGB(255, 255, 255)
-    if cfg.Theme and cfg.Theme.Border then
-        pcall(function() borderColor = Color3.fromHex("#" .. cfg.Theme.Border) end)
-    end
-    if cfg.Theme and cfg.Theme.Text then
-        pcall(function() textColor = Color3.fromHex("#" .. cfg.Theme.Text) end)
-    end
+    local borderColor = Color3.new(0, 1, 0) -- Default hijau
+    local textColor = Color3.new(1, 1, 1)    -- Default putih
+    pcall(function() 
+        if cfg.Theme and cfg.Theme.Border then borderColor = Color3.fromHex("#" .. cfg.Theme.Border) end
+        if cfg.Theme and cfg.Theme.Text then textColor = Color3.fromHex("#" .. cfg.Theme.Text) end
+    end)
 
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 300, 0, 150)
@@ -76,7 +68,7 @@ local function createStandaloneUI(cfg, onKeySubmit)
 
     local keyInput = Instance.new("TextBox")
     keyInput.PlaceholderText = "KEY"
-    keyInput.Name = "KeyInput" -- Beri nama agar mudah diakses
+    keyInput.Name = "KeyInput"
     keyInput.Size = UDim2.new(0.9, 0, 0, 30)
     keyInput.Position = UDim2.new(0.05, 0, 0, 60)
     keyInput.Font = Enum.Font.SourceSans
@@ -105,14 +97,23 @@ local function createStandaloneUI(cfg, onKeySubmit)
     cancelButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
     cancelButton.Parent = frame
 
-    -- Objek API yang akan dikembalikan
+    -- Simpan fungsi callback yang akan di-override oleh pengguna akhir (user)
+    local userFailed, userPassed, userWhitelisted, userCancelled
+    
+    -- Objek API yang dikembalikan
     local api = {
-        _RawGui = frame, -- Tambahkan akses ke GUI mentah untuk feedback
-        Failed = function(fn) api._Failed = fn end,
-        Passed = function(fn) api._Passed = fn end,
-        Whitelisted = function(fn) api._Whitelisted = fn end,
-        Cancelled = function(fn) api._Cancelled = fn end,
+        _RawGui = frame, 
+        -- API setter untuk user
+        Failed = function(fn) userFailed = fn end,
+        Passed = function(fn) userPassed = fn end,
+        Whitelisted = function(fn) userWhitelisted = fn end,
+        Cancelled = function(fn) userCancelled = fn end,
         Destroy = function() screenGui:Destroy() end,
+        -- Panggil event internal saat tombol diklik
+        _CallFailed = function() if userFailed then pcall(userFailed) end end,
+        _CallPassed = function() if userPassed then pcall(userPassed) end end,
+        _CallWhitelisted = function() if userWhitelisted then pcall(userWhitelisted) end end,
+        _CallCancelled = function() if userCancelled then pcall(userCancelled) end end,
     }
 
     submitButton.MouseButton1Click:Connect(function()
@@ -121,27 +122,41 @@ local function createStandaloneUI(cfg, onKeySubmit)
     
     cancelButton.MouseButton1Click:Connect(function()
         screenGui:Destroy()
-        if api._Cancelled then pcall(api._Cancelled) end
+        api._CallCancelled()
     end)
 
     return api
 end
 -- End of Standalone GUI Implementation
 
--- Override BcryptCheck (dipertahankan)
+-- Override BcryptCheck: harus di-override oleh user jika menggunakan bcrypt
 Framework.BcryptCheck = function(input, hash)
     warn("[QueryKey] BcryptCheck tidak di-override. Bcrypt tidak akan berfungsi.")
     return false
 end
 
--- The main function to create the window (SEKARANG HANYA STANDALONE UI)
+-- Fungsi utama untuk menjalankan evkey.lua
+local function runEvkey(evurl)
+    evurl = evurl or DEFAULT_EVKEY_URL
+    -- Delay sedikit untuk memungkinkan GUI hilang/memberi waktu
+    spawn(function()
+        wait(0.2)
+        local ok2, err = pcall(function()
+            print("[QueryKey] Mencoba memuat dan menjalankan EVKEY dari:", evurl)
+            loadstring(game:HttpGet(evurl))()
+        end)
+        if not ok2 then
+            warn("[QueryKey] Gagal load evkey.lua dari:", evurl, "error:", err)
+        end
+    end)
+end
+
+
+-- The main function to create the window
 function Framework.CreateWindow(cfg)
     cfg = cfg or {}
     cfg.KeySettings = cfg.KeySettings or {}
-    cfg.GetKeyLink = cfg.GetKeyLink or ""
     cfg.Whitelisted = cfg.Whitelisted or {}
-    cfg.Theme = cfg.Theme or {}
-    cfg.Text = cfg.Text or {}
 
     -- Logic validasi kunci
     local function validateKey(inputKey)
@@ -155,7 +170,6 @@ function Framework.CreateWindow(cfg)
             if Framework.BcryptCheck then
                 return Framework.BcryptCheck(inputKey, targetKey)
             else
-                warn("[QueryKey] BcryptCheck belum di-override! Key tidak dapat divalidasi.")
                 return false
             end
         end
@@ -165,97 +179,54 @@ function Framework.CreateWindow(cfg)
     -- Handler saat tombol Submit ditekan pada GUI
     local function handleStandaloneSubmit(inputKey, uiApi)
         local localPlayer = game:GetService("Players").LocalPlayer
-        
-        if table.find(cfg.Whitelisted, localPlayer.UserId) then
+        local isWhitelisted = table.find(cfg.Whitelisted, localPlayer.UserId)
+
+        if isWhitelisted then
             uiApi.Destroy()
-            if uiApi._Whitelisted then pcall(uiApi._Whitelisted) end
+            pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
+            uiApi._CallWhitelisted()
         elseif validateKey(inputKey) then
             uiApi.Destroy()
-            if uiApi._Passed then pcall(uiApi._Passed) end
+            pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
+            uiApi._CallPassed()
         else
             print("[QueryKey] Key validation failed.")
             
             -- Feedback visual pada GUI
             local keyInput = uiApi._RawGui:FindFirstChild("KeyInput")
             if keyInput then
-                local originalPlaceholder = keyInput.PlaceholderText
+                local originalPlaceholder = cfg.Text.Body or "Enter the key:"
                 keyInput.PlaceholderText = cfg.Text.Fail or "Access denied"
                 keyInput.Text = ""
                 wait(2)
                 keyInput.PlaceholderText = originalPlaceholder
             end
             
-            if uiApi._Failed then pcall(uiApi._Failed) end
+            uiApi._CallFailed()
         end
     end
     
     -- Buat GUI utama
-    local uiWindow = createStandaloneUI(cfg, handleStandaloneSubmit)
-
-    if not uiWindow then
-         error("[QueryKey] Gagal membuat GUI: Standalone UI gagal dimuat.")
+    local uiWindow = nil
+    local okCreate, err = pcall(function()
+        uiWindow = createStandaloneUI(cfg, handleStandaloneSubmit)
+    end)
+    
+    if not okCreate or not uiWindow then
+         error(string.format("[QueryKey] GAGAL TOTAL membuat GUI internal. Executor Anda mungkin tidak mendukung GUI Roblox. Error: %s", tostring(err)))
     end
 
-    -- Cek Whitelisted User lebih dulu (meskipun GUI sudah muncul)
+    -- Cek Whitelisted User SAAT AWAL: Jika user whitelisted, langsung eksekusi tanpa menampilkan UI
     if table.find(cfg.Whitelisted, game:GetService("Players").LocalPlayer.UserId) then
-        pcall(function() uiWindow.Destroy() end) -- Auto-destroy UI
+        pcall(function() uiWindow.Destroy() end)
+        pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
+        -- Jika ini terjadi, event .Whitelisted tidak akan terpanggil karena kode sudah selesai di example.lua
+        -- Namun, tujuan (eksekusi evkey) sudah tercapai.
+        return
     end
 
-    -- internal handlers: run evkey when pass or whitelisted
-    local function runEvkey(evurl)
-        evurl = evurl or DEFAULT_EVKEY_URL
-        spawn(function()
-            wait(0.2)
-            local ok2, err = pcall(function()
-                loadstring(game:HttpGet(evurl))()
-            end)
-            if not ok2 then
-                warn("[QueryKey] Gagal load evkey.lua dari:", evurl, "error:", err)
-            end
-        end)
-    end
-
-    -- Pembungkus fungsi event
-    local userFailed, userPassed, userWhitelisted, userCancelled
-
-    local function wrapFailed(fn) userFailed = fn end
-    local function wrapPassed(fn) userPassed = fn end
-    local function wrapWhitelisted(fn) userWhitelisted = fn end
-    local function wrapCancelled(fn) userCancelled = fn end
-
-    -- Daftarkan callbacks internal ke API GUI
-    uiWindow.Failed(function()
-        pcall(function() print("[QueryKey] Key validation failed") end)
-        if userFailed then pcall(userFailed) end
-    end)
-
-    uiWindow.Passed(function()
-        pcall(function() print("[QueryKey] Key validation passed") end)
-        pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
-        if userPassed then pcall(userPassed) end
-    end)
-
-    uiWindow.Whitelisted(function()
-        pcall(function() print("[QueryKey] User whitelisted — bypassing key") end)
-        pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
-        if userWhitelisted then pcall(userWhitelisted) end
-    end)
-
-    uiWindow.Cancelled(function()
-        pcall(function() print("[QueryKey] User cancelled key UI") end)
-        if userCancelled then pcall(userCancelled) end
-    end)
-
-    -- Kembalikan objek API yang sudah dibungkus
-    local ret = {}
-    ret.Failed = wrapFailed
-    ret.Passed = wrapPassed
-    ret.Whitelisted = wrapWhitelisted
-    ret.Cancelled = wrapCancelled
-    ret.Destroy = uiWindow.Destroy 
-    ret._Raw = uiWindow._RawGui
-
-    return ret
+    -- Kembalikan objek API Standalone (sekarang sudah dimodifikasi dengan internal callbacks)
+    return uiWindow
 end
 
 return Framework
