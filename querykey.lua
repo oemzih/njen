@@ -1,315 +1,181 @@
--- framework.lua
--- KeySystem module (return table)
--- Bahasa: Indonesian comments
+-- querykey.lua
+-- Key System Framework: menampilkan KeyUI (KeyUI v2) dan menjalankan evkey.lua saat valid
+-- Pastikan file ini di-raw URL seperti:
+-- https://raw.githubusercontent.com/oemzih/njen/refs/heads/main/querykey.lua
 
-local KeySystem = {}
-KeySystem.__index = KeySystem
+local Framework = {}
+Framework.__index = Framework
 
-local function newinst(class, props)
-    local obj = Instance.new(class)
-    if props then
-        for k,v in pairs(props) do
-            pcall(function() obj[k] = v end)
-        end
+-- CONFIG (ubah kalau mau)
+local DEFAULT_EVKEY_URL = "https://raw.githubusercontent.com/oemzih/njen/refs/heads/main/evkey.lua"
+
+-- util: safe parent ScreenGui (CoreGui jika tersedia, fallback PlayerGui)
+local function safeParent(screenGui)
+    local RunService = game:GetService("RunService")
+    if RunService:IsStudio() then
+        pcall(function() screenGui.Parent = game.CoreGui end)
+        return
     end
-    return obj
-end
-
-local DEFAULT_THEME = {
-    Text = "00ff00",
-    Border = "00ff00",
-    Background = "000000"
-}
-
-local function hexToColor3(hex)
-    hex = tostring(hex):gsub("#", "")
-    if #hex ~= 6 then return Color3.new(1,1,1) end
-    local r = tonumber(hex:sub(1,2), 16)/255
-    local g = tonumber(hex:sub(3,4), 16)/255
-    local b = tonumber(hex:sub(5,6), 16)/255
-    return Color3.new(r,g,b)
-end
-
--- Bcrypt check placeholder; override jika executor mendukung binding bcrypt
-KeySystem.BcryptCheck = function(_input, _hash)
-    warn("Bcrypt check not available. Override KeySystem.BcryptCheck with real bcrypt binding for secure checks.")
-    return false
-end
-
-local function buildGui(cfg)
-    local screenGui = newinst("ScreenGui", {Name = "KeySystemUI", ResetOnSpawn = false, IgnoreGuiInset = true})
-    if game:GetService("RunService"):IsStudio() then
-        screenGui.Parent = game.CoreGui
+    -- try CoreGui first (some executors allow it)
+    local ok = pcall(function() screenGui.Parent = game:GetService("CoreGui") end)
+    if ok then return end
+    -- fallback: PlayerGui
+    local plr = game:GetService("Players").LocalPlayer
+    if plr then
+        pcall(function() screenGui.Parent = plr:WaitForChild("PlayerGui") end)
     else
-        screenGui.Parent = game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
+        -- last resort: workspace (shouldn't happen)
+        pcall(function() screenGui.Parent = workspace end)
     end
-
-    local frame = newinst("Frame", {
-        Name = "MainFrame",
-        Size = UDim2.new(0,520,0,300),
-        Position = UDim2.new(0.5, -260, 0.5, -150),
-        BackgroundColor3 = hexToColor3(cfg.Theme.Background or DEFAULT_THEME.Background),
-        BorderSizePixel = 3
-    })
-    frame.BorderColor3 = hexToColor3(cfg.Theme.Border or DEFAULT_THEME.Border)
-    frame.Parent = screenGui
-
-    local title = newinst("TextLabel", {
-        Name = "Title",
-        Text = cfg.Text.Title or "Key System",
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 28,
-        Size = UDim2.new(1, -40, 0, 40),
-        Position = UDim2.new(0,20,0,10),
-        BackgroundTransparency = 1,
-        TextColor3 = hexToColor3(cfg.Theme.Text or DEFAULT_THEME.Text)
-    })
-    title.Parent = frame
-
-    local body = newinst("TextLabel", {
-        Name = "Body",
-        Text = cfg.Text.Body or "Enter the key to access the contents of the script.",
-        Font = Enum.Font.SourceSans,
-        TextSize = 20,
-        Size = UDim2.new(1, -40, 0, 80),
-        Position = UDim2.new(0,20,0,55),
-        BackgroundTransparency = 1,
-        TextWrapped = true,
-        TextColor3 = hexToColor3(cfg.Theme.Text or DEFAULT_THEME.Text)
-    })
-    body.Parent = frame
-
-    local inputBox = newinst("TextBox", {
-        Name = "KeyBox",
-        Text = "",
-        PlaceholderText = "Enter key",
-        Font = Enum.Font.SourceSansItalic,
-        TextSize = 22,
-        Size = UDim2.new(1, -40, 0, 40),
-        Position = UDim2.new(0,20,0,140),
-        BackgroundTransparency = 0.7,
-        ClearTextOnFocus = false
-    })
-    inputBox.TextColor3 = hexToColor3(cfg.Theme.Text or DEFAULT_THEME.Text)
-    inputBox.Parent = frame
-
-    local getKeyBtn = newinst("TextButton", {
-        Name = "GetKey",
-        Text = "Get key",
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 20,
-        Size = UDim2.new(0,140,0,40),
-        Position = UDim2.new(0,20,1,-60),
-        BackgroundTransparency = 0.8
-    })
-    getKeyBtn.TextColor3 = hexToColor3(cfg.Theme.Text or DEFAULT_THEME.Text)
-    getKeyBtn.Parent = frame
-
-    local confirmBtn = newinst("TextButton", {
-        Name = "Confirm",
-        Text = "Confirm",
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 20,
-        Size = UDim2.new(0,140,0,40),
-        Position = UDim2.new(1,-160,1,-60),
-        BackgroundTransparency = 0.8
-    })
-    confirmBtn.TextColor3 = hexToColor3(cfg.Theme.Text or DEFAULT_THEME.Text)
-    confirmBtn.Parent = frame
-
-    local closeBtn = newinst("TextButton", {
-        Name = "Close",
-        Text = "X",
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 20,
-        Size = UDim2.new(0,36,0,36),
-        Position = UDim2.new(1,-46,0,10),
-        BackgroundTransparency = 0.8
-    })
-    closeBtn.TextColor3 = hexToColor3(cfg.Theme.Text or DEFAULT_THEME.Text)
-    closeBtn.Parent = frame
-
-    return {
-        ScreenGui = screenGui,
-        Frame = frame,
-        Input = inputBox,
-        GetKey = getKeyBtn,
-        Confirm = confirmBtn,
-        Close = closeBtn
-    }
 end
 
-local function isWhitelisted(cfg)
-    local plr = game.Players.LocalPlayer
-    if not plr then return false end
-    local wl = cfg.Whitelisted
-    if not wl then return false end
-    if type(wl) == "table" then
-        for _, id in ipairs(wl) do
-            if tonumber(id) == plr.UserId then return true end
-        end
-    elseif type(wl) == "string" then
-        return false
+-- Try to load KeyUI v2 (external UI lib)
+local function loadKeyUI()
+    local ok, ui = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/FFJ1/Roblox-Exploits/main/UIs/KeyUI/KeyUIv2.lua"))()
+    end)
+    if not ok or not ui then
+        warn("[QueryKey] Gagal memuat KeyUI v2:", ui)
+        return nil
     end
-    return false
+    return ui
 end
 
-function KeySystem.CreateWindow(cfg)
+-- CreateWindow API wrapper
+function Framework.CreateWindow(cfg)
     cfg = cfg or {}
     cfg.KeySettings = cfg.KeySettings or {}
-    cfg.Theme = cfg.Theme or DEFAULT_THEME
+    cfg.GetKeyLink = cfg.GetKeyLink or ""
+    cfg.Whitelisted = cfg.Whitelisted or {}
+    cfg.Theme = cfg.Theme or {}
     cfg.Text = cfg.Text or {}
 
-    local ui = buildGui(cfg)
-
-    local events = {
-        Failed = function() end,
-        Passed = function() end,
-        Whitelisted = function() end,
-        Cancelled = function() end
-    }
-
-    local destroyed = false
-    local function destroy()
-        if destroyed then return end
-        destroyed = true
-        pcall(function() ui.ScreenGui:Destroy() end)
+    -- Load the KeyUI library
+    local KeyUI = loadKeyUI()
+    if not KeyUI then
+        -- fallback: make simple builtin GUI if KeyUI unavailable
+        warn("[QueryKey] KeyUI tidak tersedia. Mencoba membuat GUI sederhana...")
+        -- simple builtin will still return an object with the same event API, but minimal
+        -- For brevity, we'll just error out so user knows to fix executor/network
+        error("[QueryKey] KeyUI v2 required but gagal dimuat. Periksa koneksi atau URL KeyUI.")
     end
 
-    if isWhitelisted(cfg) then
+    -- Build settings to pass to KeyUI.CreateWindow (match user's expected keys)
+    local keySettings = {
+        Key = cfg.KeySettings.Key or "",
+        Type = cfg.KeySettings.Type or "plain",
+        Encryption = cfg.KeySettings.Encryption or ""
+    }
+
+    local uiWindow = nil
+    local okCreate, res = pcall(function()
+        uiWindow = KeyUI.CreateWindow({
+            KeySettings = keySettings,
+            GetKeyLink = cfg.GetKeyLink,
+            Whitelisted = cfg.Whitelisted,
+            Theme = cfg.Theme,
+            Text = cfg.Text
+        })
+    end)
+
+    if not okCreate or not uiWindow then
+        warn("[QueryKey] Gagal membuat window KeyUI:", res)
+        return nil
+    end
+
+    -- internal handlers: run evkey when pass or whitelisted
+    local function runEvkey(evurl)
+        evurl = evurl or DEFAULT_EVKEY_URL
+        -- small delay to allow GUI to close nicely
         spawn(function()
-            events.Whitelisted()
-            destroy()
+            -- try fade/delay if UI library provides destroy; otherwise just wait a bit
+            wait(0.2)
+            local ok2, err = pcall(function()
+                loadstring(game:HttpGet(evurl))()
+            end)
+            if not ok2 then
+                warn("[QueryKey] Gagal load evkey.lua dari:", evurl, "error:", err)
+            end
         end)
     end
 
-    ui.GetKey.MouseButton1Click:Connect(function()
-        local link = cfg.GetKeyLink
-        if link and link ~= "" then
-            local success = pcall(function() setclipboard(link) end)
-            if success then
-                print("[KeySystem] Key link copied to clipboard:", link)
-            else
-                print("[KeySystem] Key link: ", link)
-            end
-        else
-            print("[KeySystem] No GetKeyLink provided.")
+    -- wire default events: if user passed their own functions, keep them
+    local userFailed = nil
+    local userPassed = nil
+    local userWhitelisted = nil
+    local userCancelled = nil
+
+    -- override event registrations if provided by KeyUI wrapper; else we provide them
+    -- assume KeyUI.CreateWindow returns an object with .Failed/.Passed/.Whitelisted/.Cancelled setters (as earlier)
+    -- We'll wrap them so both framework and user callbacks run.
+
+    -- store original registration functions if exist
+    local origFailed = uiWindow.Failed
+    local origPassed = uiWindow.Passed
+    local origWhitelisted = uiWindow.Whitelisted
+    local origCancelled = uiWindow.Cancelled
+
+    -- helper to set wrapped callbacks
+    local function wrapFailed(fn)
+        userFailed = fn
+    end
+    local function wrapPassed(fn)
+        userPassed = fn
+    end
+    local function wrapWhitelisted(fn)
+        userWhitelisted = fn
+    end
+    local function wrapCancelled(fn)
+        userCancelled = fn
+    end
+
+    -- register internal callbacks with KeyUI object:
+    -- KeyUI will call these when events happen; these wrappers call both user-specified and internal actions.
+    origFailed(function()
+        -- internal: print / optional UI feedback
+        pcall(function() print("[QueryKey] Key validation failed") end)
+        if userFailed then
+            pcall(userFailed)
         end
     end)
 
-    ui.Close.MouseButton1Click:Connect(function()
-        events.Cancelled()
-        destroy()
-    end)
-
-    ui.Confirm.MouseButton1Click:Connect(function()
-        local entered = tostring(ui.Input.Text or "")
-        local ks = cfg.KeySettings or {}
-        local keyType = ks.Type or "plain"
-        local keyVal = ks.Key or ""
-        local encryption = ks.Encryption or nil
-
-        local passed = false
-
-        if keyType == "plain" then
-            passed = (entered == tostring(keyVal))
-        elseif keyType == "url" then
-            passed = (entered == tostring(keyVal))
-        else
-            if encryption and encryption:lower() == "bcrypt" then
-                local ok, ret = pcall(function()
-                    return KeySystem.BcryptCheck(entered, keyVal)
-                end)
-                if ok and ret == true then passed = true end
-            else
-                passed = false
-            end
-        end
-
-        if passed then
-            events.Passed()
-            destroy()
-        else
-            events.Failed()
+    origPassed(function()
+        pcall(function() print("[QueryKey] Key validation passed") end)
+        -- internal: run evkey
+        pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
+        if userPassed then
+            pcall(userPassed)
         end
     end)
 
-    local window = {}
-    window.Failed = function(fn) events.Failed = fn end
-    window.Passed = function(fn) events.Passed = fn end
-    window.Whitelisted = function(fn) events.Whitelisted = fn end
-    window.Cancelled = function(fn) events.Cancelled = fn end
-    window.Destroy = destroy-- framework.lua
-if success then
-print("[KeySystem] Key link copied to clipboard:", link)
-else
-print("[KeySystem] Key link: ", link)
-end
-else
-print("[KeySystem] No GetKeyLink provided.")
-end
-end)
+    origWhitelisted(function()
+        pcall(function() print("[QueryKey] User whitelisted — bypassing key") end)
+        -- internal: run evkey
+        pcall(runEvkey, cfg.ExecuteOnPass or DEFAULT_EVKEY_URL)
+        if userWhitelisted then
+            pcall(userWhitelisted)
+        end
+    end)
 
+    origCancelled(function()
+        pcall(function() print("[QueryKey] User cancelled key UI") end)
+        if userCancelled then
+            pcall(userCancelled)
+        end
+    end)
 
-ui.Close.MouseButton1Click:Connect(function()
-events.Cancelled()
-destroy()
-end)
+    -- return an object that lets caller set their callbacks, destroy, and access raw GUI if needed
+    local ret = {}
+    ret.Failed = wrapFailed
+    ret.Passed = wrapPassed
+    ret.Whitelisted = wrapWhitelisted
+    ret.Cancelled = wrapCancelled
+    ret.Destroy = function()
+        pcall(function() uiWindow.Destroy() end)
+    end
+    ret._Raw = uiWindow
 
-
-ui.Confirm.MouseButton1Click:Connect(function()
-local entered = tostring(ui.Input.Text or "")
-local ks = cfg.KeySettings or {}
-local keyType = ks.Type or "plain"
-local keyVal = ks.Key or ""
-local encryption = ks.Encryption or nil
-
-
-local passed = false
-
-
-if keyType == "plain" then
-passed = (entered == tostring(keyVal))
-elseif keyType == "url" then
-passed = (entered == tostring(keyVal))
-else
-if encryption and encryption:lower() == "bcrypt" then
-local ok, ret = pcall(function()
-return KeySystem.BcryptCheck(entered, keyVal)
-end)
-if ok and ret == true then passed = true end
-else
-passed = false
-end
+    return ret
 end
 
-
-if passed then
-events.Passed()
-destroy()
-else
-events.Failed()
-end
-end)
-
-
-local window = {}
-window.Failed = function(fn) events.Failed = fn end
-window.Passed = function(fn) events.Passed = fn end
-window.Whitelisted = function(fn) events.Whitelisted = fn end
-window.Cancelled = function(fn) events.Cancelled = fn end
-window.Destroy = destroy
-window._Gui = ui
-
-
-return window
-end
-
-
-return KeySystem
-    window._Gui = ui
-
-    return window
-end
-
-return KeySystem
+return Framework
